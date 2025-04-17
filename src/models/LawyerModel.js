@@ -11,7 +11,7 @@ const lawyerSchema= new Schema({
         
     },
     specializations: [{ 
-        type: mongoose.Schema.Types.ObjectId, 
+        type: Schema.Types.ObjectId, 
         ref: "Service" }], // Link to Services
 
     experienceYears:{
