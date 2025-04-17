@@ -10,6 +10,10 @@ const userSchema= new Schema({
     lastName:{
         type:String
     },
+    phone: {
+        type: String,
+        unique: true
+    },
     age:{
         type:Number
     },

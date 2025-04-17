@@ -1,10 +1,21 @@
-const express = require("express");
-const ServiceController = require("../contollers/ServiceController");
+const express = require('express');
+const routes = express.Router();
+const serviceController = require('../contollers/ServiceController');
+const  protect = require("../middleware/AuthMiddleware")
+const  isLawyer  = require('../middleware/AuthMiddleware');
+const isAdmin = require('../middleware/AuthMiddleware')
 
-const router = express.Router();
 
-router.get("/getservice", ServiceController.getAllServices);
-router.post("/addservice", ServiceController.addService);
-router.delete("/deleteserviceby/:id", ServiceController.deleteServiceById);
+// Public routes
+routes.get('/', serviceController.getAllServices);
+routes.get('/:serviceId/lawyers', serviceController.getLawyersBySpecialization);
 
-module.exports = router;
+routes.use(protect)
+// Admin routes
+routes.post('/', isAdmin, serviceController.createService);
+
+// Lawyer routes
+routes.post('/specializations',  isLawyer, serviceController.addSpecialization);
+routes.delete('/specializations',  isLawyer, serviceController.removeSpecialization);
+
+module.exports = routes;

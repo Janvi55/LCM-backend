@@ -15,23 +15,49 @@
 
 
 
+// const express = require("express");
+// const routes = express.Router();
+// const AppointmentController = require("../contollers/AppointmentController");
+
+// // Route to create an appointment
+// routes.post("/addappointments", AppointmentController.createAppointment);
+
+// // Route to get all appointments
+// routes.get("/getappointments", AppointmentController.getAppointments);
+
+// //route to get appointment by Id
+// routes.get("/getappoimtmentby/:id", AppointmentController.getAppointmentById);
+
+// //route to update appointment
+// routes.put("/updateappointment/:id",AppointmentController.updateAppointment)
+
+// // Route to delete an appointment by ID
+// routes.delete("/deleteappointments/:id", AppointmentController.deleteAppointment);
+
+// module.exports = routes;
+
+
+
+
+
+// routes/appointmentRoutes.js
 const express = require("express");
-const router = express.Router();
-const AppointmentController = require("../contollers/AppointmentController");
+const routes = express.Router();
+const appointmentController = require("../contollers/AppointmentController");
+const  protect = require("../middleware/AuthMiddleware")
+const  isLawyer  = require('../middleware/AuthMiddleware');
 
-// Route to create an appointment
-router.post("/addappointments", AppointmentController.createAppointment);
+// Public routes
+routes.post("/", appointmentController.createAppointment);
 
-// Route to get all appointments
-router.get("/getappointments", AppointmentController.getAppointments);
+routes.use(protect);
 
-//route to get appointment by Id
-router.get("/getappoimtmentby/:id", AppointmentController.getAppointmentById);
+// Lawyer-specific routes
+routes.get("/lawyer/myappointments",  isLawyer, appointmentController.getLawyerAppointments);
+routes.get("/lawyer/:id",  isLawyer, appointmentController.getAppointmentById);
+routes.patch("/lawyer/:id/status",  isLawyer, appointmentController.updateAppointmentStatus);
 
-//route to update appointment
-router.put("/updateappointment/:id",AppointmentController.updateAppointment)
+// Admin routes
+routes.get("/",  appointmentController.getAppointments);
 
-// Route to delete an appointment by ID
-router.delete("/deleteappointments/:id", AppointmentController.deleteAppointment);
-
-module.exports = router;
+module.exports = routes;
