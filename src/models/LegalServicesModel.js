@@ -1,55 +1,271 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+// Subcategory mappings based on LegalCategory
+const SERVICE_SUBCATEGORIES = {
+  'divorce-lawyers': ['Mutual Divorce', 'Contested Divorce', 'Child Custody'],
+  'criminal-lawyers': ['Bail Applications', 'FIR Quashing', 'Anticipatory Bail'],
+  'family-lawyers': ['In-Law Problems', 'Marital Finance', 'Alimony'],
+  'property-lawyers': ['Sale Deeds', 'Title Verification', 'Partition Suits'],
+  'cheque-bounce-lawyers': ['Section 138 NI Act', 'Compounding Offences', 'Notice Drafting'],
+  'gst-lawyers': ['GST Registration', 'Returns Filing', 'Appeals'],
+  'employment-lawyers': ['Termination Disputes', 'Salary Recovery', 'POSH Cases'],
+};
+
 const legalServiceSchema = new Schema({
-  lawyerId: {
+  // Core Identification
+  lawyer: {
     type: Schema.Types.ObjectId,
     ref: 'Lawyer',
-    required: true
+    required: true,
+    index: true
   },
   title: {
     type: String,
-    required: true
+    required: true,
+    trim: true,
+    maxlength: 100
+  },
+  slug: {
+    type: String,
+    unique: true,
+    lowercase: true,
+    match: /^[a-z0-9-]+$/
   },
   description: {
     type: String,
-    required: true
+    required: true,
+    minlength: 100
   },
+
+  // Categorization System
   practiceArea: {
+    type: Schema.Types.ObjectId,
+    ref: 'LegalCategory',
+    required: true
+  },
+  subCategory: {
     type: String,
-    required: true
-  },
-  price: {
-    type: Number,
-    required: true
-  },
-  isRecurring: {
-    type: Boolean,
-    default: false
-  },
-  timeSlots: [{
-    date: Date,
-    startTime: String,
-    endTime: String,
-    consultationType: {
-      type: String,
-      enum: ['virtual', 'in-person']
+    required: true,
+    validate: {
+      validator: function(v) {
+        // Get the parent document (this) and check if practiceArea is populated
+        if (!this.practiceArea) return false;
+        
+        // If practiceArea is an ObjectId, we can't validate synchronously
+        if (this.practiceArea instanceof mongoose.Types.ObjectId) {
+          return true; // Defer validation to pre-save hook
+        }
+        
+        // If practiceArea is populated, we can validate
+        const categorySlug = this.practiceArea.slug;
+        return SERVICE_SUBCATEGORIES[categorySlug]?.includes(v) || false;
+      },
+      message: props => `"${props.value}" is not a valid subcategory for this practice area`
     }
+  },
+
+  // Service Content
+  highlights: {
+    type: [{
+      icon: String,
+      text: {
+        type: String,
+        maxlength: 100
+      },
+      _id: false
+    }],
+    validate: {
+      validator: function(val) {
+        return val.length <= 3;
+      },
+      message: 'Maximum 3 highlights allowed'
+    }
+  },
+  processFlow: [{
+    step: Number,
+    title: String,
+    duration: String,
+    costComponent: String,
+    _id: false
   }],
-  documents: [{
+
+  // Pricing Structure
+  pricing: {
+    type: {
+      type: String,
+      enum: ['Fixed', 'Hourly', 'Package'],
+      required: true
+    },
+    baseAmount: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    displayAmount: String,
+    includes: [String],
+    excludes: [String]
+  },
+
+  // Availability
+  availability: {
+    bookingType: {
+      type: String,
+      enum: ['Instant', 'Scheduled'],
+      default: 'Scheduled'
+    },
+    responseTime: String,
+    timeSlots: [{
+      day: String,
+      startTime: String,
+      endTime: String,
+      _id: false
+    }]
+  },
+
+  // Service Delivery
+  serviceModes: {
+    type: [String],
+    enum: ['Video', 'Phone', 'In-Person', 'Chat'],
+    default: ['Video']
+  },
+
+  // Documents
+  requiredDocuments: [{
     name: String,
-    url: String
+    description: String,
+    sampleUrl: String
   }],
+
+  // Stats & Visibility
+  stats: {
+    views: { type: Number, default: 0 },
+    enquiries: { type: Number, default: 0 }
+  },
   status: {
     type: String,
-    enum: ['active', 'inactive', 'pending'],
-    default: 'pending'
+    enum: ['Draft', 'Active', 'Inactive'],
+    default: 'Draft'
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Indexes
+legalServiceSchema.index({ slug: 1 });
+legalServiceSchema.index({ lawyer: 1 });
+legalServiceSchema.index({ practiceArea: 1, subCategory: 1 });
+
+// Virtuals
+legalServiceSchema.virtual('subCategoryOptions').get(function() {
+  if (!this.practiceArea || !this.practiceArea.slug) return [];
+  return SERVICE_SUBCATEGORIES[this.practiceArea.slug] || [];
+});
+
+// Pre-save hook for validation and defaults
+legalServiceSchema.pre('save', async function(next) {
+  // Auto-generate slug
+  if (!this.slug) {
+    this.slug = this.title.toLowerCase()
+      .replace(/[^\w]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  // Format display amount
+  if (!this.pricing.displayAmount) {
+    this.pricing.displayAmount = `₹${this.pricing.baseAmount.toLocaleString('en-IN')}`;
+    if (this.pricing.type === 'Hourly') this.pricing.displayAmount += '/hour';
+  }
+
+  // Validate subcategory if practiceArea is an ObjectId
+  if (this.practiceArea instanceof mongoose.Types.ObjectId && this.isModified('subCategory')) {
+    const category = await mongoose.model('LegalCategory').findById(this.practiceArea);
+    if (category && !SERVICE_SUBCATEGORIES[category.slug]?.includes(this.subCategory)) {
+      throw new Error(`"${this.subCategory}" is not a valid subcategory for this practice area`);
+    }
+  }
+  
+  next();
+});
+
+// Update lawyer's service count
+legalServiceSchema.post('save', async function(doc) {
+  if (doc.isNew) {
+    await mongoose.model('Lawyer').updateOne(
+      { _id: doc.lawyer },
+      { $inc: { 'stats.serviceCount': 1 } }
+    );
+  }
+});
+
+legalServiceSchema.post('remove', async function(doc) {
+  await mongoose.model('Lawyer').updateOne(
+    { _id: doc.lawyer },
+    { $inc: { 'stats.serviceCount': -1 } }
+  );
 });
 
 module.exports = mongoose.model('LegalService', legalServiceSchema);
+
+//1
+// const mongoose = require('mongoose');
+// const Schema = mongoose.Schema;
+
+// const legalServiceSchema = new Schema({
+//   lawyerId: {
+//     type: Schema.Types.ObjectId,
+//     ref: 'Lawyer',
+//     required: true
+//   },
+//   title: {
+//     type: String,
+//     required: true
+//   },
+//   description: {
+//     type: String,
+//     required: true
+//   },
+//   practiceArea: {
+//     type: String,
+//     required: true
+//   },
+//   price: {
+//     type: Number,
+//     required: true
+//   },
+//   isRecurring: {
+//     type: Boolean,
+//     default: false
+//   },
+//   timeSlots: [{
+//     date: Date,
+//     startTime: String,
+//     endTime: String,
+//     consultationType: {
+//       type: String,
+//       enum: ['virtual', 'in-person']
+//     }
+//   }],
+//   documents: [{
+//     name: String,
+//     url: String
+//   }],
+//   status: {
+//     type: String,
+//     enum: ['active', 'inactive', 'pending'],
+//     default: 'pending'
+//   }
+// }, {
+//   timestamps: true
+// });
+
+// module.exports = mongoose.model('LegalService', legalServiceSchema);
 
 //2
 

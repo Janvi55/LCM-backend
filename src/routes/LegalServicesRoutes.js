@@ -1,51 +1,88 @@
 const express = require('express');
 const routes = express.Router();
 const legalServiceController = require('../contollers/LegalServiceController');
-const consultationController = require('../contollers/ConsultationController');
-const  protect = require("../middleware/AuthMiddleware")
-const  isLawyer  = require('../middleware/AuthMiddleware');
-const { uploadSingle, uploadMultiple } = require('../middleware/Documentmiddleware');
+const legalCategoryController = require('../contollers/LegalCategoryController');
+const lawyerController = require('../contollers/LawyerController');
 
-// Public routes (accessible without authentication)
-routes.get('/', legalServiceController.getServices);
-routes.get('/:id', legalServiceController.getService);
+// Service discovery
+routes.get('/services', legalServiceController.getServices);
+routes.get('/services/popular', legalServiceController.getPopularServices);
+routes.get('/services/:slug', legalServiceController.getService);
 
-// Protected routes (require authentication)
-routes.use(protect);
 
-// Lawyer-only routes (require lawyer role)
-routes.post(
-    '/', 
-    isLawyer,
-    uploadMultiple.array('documents', 5), // Properly configured middleware
-    legalServiceController.createService
-  );
+// Category browsing
+routes.get('/categories', legalCategoryController.getAllCategories);
+routes.get('/categories/:slug', legalCategoryController.getCategory);
+routes.get('/categories/:slug/lawyers', legalCategoryController.getLawyersByCategory);
+routes.get('/categories/:slug/services', legalServiceController.getServicesByCategory);
 
-routes.get('/lawyer/myservices', 
-  isLawyer, 
-  legalServiceController.getLawyerServices
-);
+// Lawyer directory
+routes.get('/lawyers', lawyerController.getAllLawyers);
+routes.get('/lawyers/:id', lawyerController.getLawyerProfile);
+routes.get('/lawyers/:id/services', legalServiceController.getLawyerServices);
 
-routes.put(
-    '/:id',
-    isLawyer,
-    uploadMultiple.array('documents', 5), // Properly configured middleware
-    legalServiceController.updateService
-  );
-  
+// Search
+routes.get('/search', legalServiceController.unifiedSearch);
 
-routes.delete('/:id', 
-  isLawyer, 
-  legalServiceController.deleteService
-);
+// Homepage content
+routes.get('/home/stats', legalServiceController.getPlatformStats);
 
-// Consultation booking (protected but doesn't require lawyer role)
-routes.post('/:id/book', 
-  protect, // Only authenticated users can book
-  consultationController.bookConsultation
-);
 
 module.exports = routes;
+
+
+
+
+
+
+// const express = require('express');
+// const routes = express.Router();
+// const legalServiceController = require('../contollers/LegalServiceController');
+// const consultationController = require('../contollers/ConsultationController');
+// const  protect = require("../middleware/AuthMiddleware")
+// const  isLawyer  = require('../middleware/AuthMiddleware');
+// const { uploadSingle, uploadMultiple } = require('../middleware/Documentmiddleware');
+
+// // Public routes (accessible without authentication)
+// routes.get('/', legalServiceController.getServices);
+// routes.get('/:id', legalServiceController.getService);
+
+// // Protected routes (require authentication)
+// routes.use(protect);
+
+// // Lawyer-only routes (require lawyer role)
+// routes.post(
+//     '/', 
+//     isLawyer,
+//     uploadMultiple.array('documents', 5), // Properly configured middleware
+//     legalServiceController.createService
+//   );
+
+// routes.get('/lawyer/myservices', 
+//   isLawyer, 
+//   legalServiceController.getLawyerServices
+// );
+
+// routes.put(
+//     '/:id',
+//     isLawyer,
+//     uploadMultiple.array('documents', 5), // Properly configured middleware
+//     legalServiceController.updateService
+//   );
+  
+
+// routes.delete('/:id', 
+//   isLawyer, 
+//   legalServiceController.deleteService
+// );
+
+// // Consultation booking (protected but doesn't require lawyer role)
+// routes.post('/:id/book', 
+//   protect, // Only authenticated users can book
+//   consultationController.bookConsultation
+// );
+
+// module.exports = routes;
 
 
 

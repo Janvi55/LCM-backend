@@ -1,3 +1,45 @@
+
+const routes = require("express").Router();
+
+const appointmentController = require("../contollers/AppointmentController");
+
+routes.get("/appointments",appointmentController.getAllAppointment);
+routes.post("/appointment",appointmentController.addAppointment);
+routes.delete("/deleteAppointment/:id",appointmentController.deleteAppointment);
+routes.get("/appointmentByUserId/:userId",appointmentController.getAllAppointmentsByUserId);
+routes.put("/updateAppointment/:id",appointmentController.updateAppointment);
+routes.get("/getAppointmentById/:id",appointmentController.getAppointmentById);
+routes.get("/appointmentByLawyerId/:lawyerId",appointmentController.getAllAppointmentsByLawyerId);
+routes.put("/updateAppointmentStatus/:id",appointmentController.updateAppointmentStatus);
+routes.get("/appointment/payments/:userId",appointmentController.getPaymentsByUserId)
+routes.put("/appointment/confirmPayment",appointmentController.updateAfterPayment);
+
+
+
+module.exports = routes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------------------------
 // const express = require("express");
 // const router = express.Router();
 // const AppointmentController = require("../contollers/AppointmentController");
@@ -41,23 +83,23 @@
 
 
 // routes/appointmentRoutes.js
-const express = require("express");
-const routes = express.Router();
-const appointmentController = require("../contollers/AppointmentController");
-const  protect = require("../middleware/AuthMiddleware")
-const  isLawyer  = require('../middleware/AuthMiddleware');
+// const express = require("express");
+// const routes = express.Router();
+// const appointmentController = require("../contollers/AppointmentController");
+// const  protect = require("../middleware/AuthMiddleware")
+// const  isLawyer  = require('../middleware/AuthMiddleware');
 
-// Public routes
-routes.post("/", appointmentController.createAppointment);
+// // Public routes
+// routes.post("/", appointmentController.createAppointment);
 
-routes.use(protect);
+// routes.use(protect);
 
-// Lawyer-specific routes
-routes.get("/lawyer/myappointments",  isLawyer, appointmentController.getLawyerAppointments);
-routes.get("/lawyer/:id",  isLawyer, appointmentController.getAppointmentById);
-routes.patch("/lawyer/:id/status",  isLawyer, appointmentController.updateAppointmentStatus);
+// // Lawyer-specific routes
+// routes.get("/lawyer/myappointments",  isLawyer, appointmentController.getLawyerAppointments);
+// routes.get("/lawyer/:id",  isLawyer, appointmentController.getAppointmentById);
+// routes.patch("/lawyer/:id/status",  isLawyer, appointmentController.updateAppointmentStatus);
 
-// Admin routes
-routes.get("/",  appointmentController.getAppointments);
+// // Admin routes
+// routes.get("/",  appointmentController.getAppointments);
 
-module.exports = routes;
+// module.exports = routes;
