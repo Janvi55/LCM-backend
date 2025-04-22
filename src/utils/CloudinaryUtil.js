@@ -1,4 +1,5 @@
 const cloudinary = require('cloudinary').v2;
+const fs = require('fs');
 
 class CloudinaryUtil {
   static async uploadFileToCloudinary(file) {
@@ -18,14 +19,19 @@ class CloudinaryUtil {
       // Upload to Cloudinary
       const response = await cloudinary.uploader.upload(file.path, {
         folder: 'lawyer-profiles' // Optional: organize files in Cloudinary
+   
       });
-
+      fs.unlinkSync(file.path);
       return response;
-    } catch (error) {
-      console.error('Cloudinary upload error:', error);
-      throw error; // Re-throw to handle in the controller
-    }
+    }  catch (error) {
+        // Clean up the file if upload fails
+        if (file && file.path) {
+          fs.unlink(file.path, (unlinkErr) => {
+            if (unlinkErr) console.error('Error deleting temp file:', unlinkErr);
+          });
+        }
+        throw new Error(`Cloudinary upload failed: ${error.message}`);
   }
 }
-
+}
 module.exports = CloudinaryUtil;
